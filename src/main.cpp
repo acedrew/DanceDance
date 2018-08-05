@@ -14,8 +14,10 @@
 #define LED4_DATA 27
 #define LED4_CHANNEL 3
 
+#define SPEED_STEPS 10
 
-const int LED_COUNT = 50;
+
+const int LED_COUNT = 100;
 const int CHANNEL = 0;
 
 int position = 0;
@@ -23,6 +25,10 @@ bool isHigh = false;
 int lastLoop = 0;
 int printTime = 250;
 uint8_t hue = 0;
+int positions[SPEED_STEPS];
+int speedIndex = 0;
+int speed = 0;
+
 
 Rgb color1 = {255,0,0};
 Rgb color2 = {0,0,0};
@@ -41,9 +47,10 @@ SmartLed led4( LED_WS2812, LED_COUNT, LED4_DATA, LED4_CHANNEL, DoubleBuffer );
 
 
 void setup() {
+    memset(positions, 0, SPEED_STEPS);
     pinMode(COUNT_PIN, INPUT);
-  Serial.begin(115200);  
-  display();
+    Serial.begin(115200);  
+    display();
 }
 
 void display() {
@@ -51,6 +58,9 @@ void display() {
     led3.show();
     led2.show();
     led1.show();
+}
+
+void updateLeds() {}
     for (int i=0; i<LED_COUNT; i++) {
         led1[ i ]  = (i-position) % 3 == 0 ? color1 : Rgb(0,0,0);
     }
@@ -65,6 +75,21 @@ void display() {
     }
 }
 
+void updatePosition() {
+    position++;
+    positions[speedIndex] = millis() - positions[speedIndex -1];
+    speedIndex++;
+    if(speedIndex >= SPEED_STEPS) {
+        speedIndex = 0;
+    }
+    int speedSum = 0;
+    for(int i; i < SPEED_STEPS; i++){
+        speedSum += positions[i];
+    }
+    speed = (int)(128 * (1.0 / ((float)(speedSum) / SPEED_STEPS)));
+
+}
+
 
 void loop() {
     // Serial.println("New loop");
@@ -76,39 +101,40 @@ void loop() {
     
     int data = analogRead(COUNT_PIN);
     if(position % 15 == 0) {
-        color1 = Hsv(hue, 255, 255);
+        color1 = Hsv(hue, 255, speed);
         if(millis() % 2 == 0) {
             hue += 5;
         }
     }
 
     if(position % 50 == 0) {
-        color2 = Hsv(hue + 128, 255, 255);
+        color2 = Hsv(hue + 128, 255, speed);
         if(millis() % 10 == 0) {
             hue += 20;
         }
     }
 
     if(position % 10 == 0) {
-        color3 = Hsv(hue+64, 255, 255);
+        color3 = Hsv(hue+64, 255, speed);
     }
 
     if(position % 5 == 0) {
-        color4 = Hsv(hue, 255, 255);
+        color4 = Hsv(hue, 255, speed);
         hue++;
     }
 
 
     if (data > HIGH_THRESHOLD && !isHigh) {
-        position++;
+        updatePosition();
         isHigh = true;
-        display();
+        updateLeds();
         // Serial.println(position);
     }
     if (data < LOW_THRESHOLD && isHigh) {
-        position++;
+        updatePosition();
         isHigh = false;
-        display();
+        updateLeds();
         // Serial.println(position);
     }
+    display();
 }
