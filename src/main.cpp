@@ -60,7 +60,7 @@ void display() {
     led1.show();
 }
 
-void updateLeds() {}
+void updateLeds() {
     for (int i=0; i<LED_COUNT; i++) {
         led1[ i ]  = (i-position) % 3 == 0 ? color1 : Rgb(0,0,0);
     }
