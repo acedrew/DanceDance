@@ -1,45 +1,114 @@
 #include <Arduino.h>
 #include <SmartLeds.h>
 
-const int LED_COUNT = 144;
-const int DATA_PIN = 13;
+#define HIGH_THRESHOLD 2800
+#define LOW_THRESHOLD 2000
+#define COUNT_PIN 26
+
+#define LED1_DATA 13
+#define LED1_CHANNEL 0
+#define LED2_DATA 12
+#define LED2_CHANNEL 1
+#define LED3_DATA 14
+#define LED3_CHANNEL 2
+#define LED4_DATA 27
+#define LED4_CHANNEL 3
+
+
+const int LED_COUNT = 50;
 const int CHANNEL = 0;
+
+int position = 0;
+bool isHigh = false;
+int lastLoop = 0;
+int printTime = 250;
+uint8_t hue = 0;
+
+Rgb color1 = {255,0,0};
+Rgb color2 = {0,0,0};
+Rgb color3 = {0,0,0};
+Rgb color4 = {0,0,0};
+
+void display();
 
 // SmartLed -> RMT driver (WS2812/WS2812B/SK6812/WS2813)
 // SmartLed leds( LED_WS2812, LED_COUNT, DATA_PIN, CHANNEL, DoubleBuffer );
-
-const int CLK_PIN = 14;
 // APA102 -> SPI driver
-Apa102 leds(LED_COUNT, CLK_PIN, DATA_PIN, DoubleBuffer);
+SmartLed led1( LED_WS2812, LED_COUNT, LED1_DATA, LED1_CHANNEL, DoubleBuffer );
+SmartLed led2( LED_WS2812, LED_COUNT, LED2_DATA, LED2_CHANNEL, DoubleBuffer );
+SmartLed led3( LED_WS2812, LED_COUNT, LED3_DATA, LED3_CHANNEL, DoubleBuffer );
+SmartLed led4( LED_WS2812, LED_COUNT, LED4_DATA, LED4_CHANNEL, DoubleBuffer );
+
 
 void setup() {
-//   Serial.begin(9600);  
+    pinMode(COUNT_PIN, INPUT);
+  Serial.begin(115200);  
+  display();
 }
 
-uint8_t hue = 0;
-
-void showGradient() {
-    hue+=5;
-    // Use HSV to create nice gradient
-    for ( int i = 0; i != LED_COUNT; i++ )
-        leds[ i ] = Hsv{ static_cast< uint8_t >( hue * i ), 255, 5 };
-	leds.show();
-    // Show is asynchronous; if we need to wait for the end of transmission,
-    // we can use leds.wait(); however we use double buffered mode, so we
-    // can start drawing right after showing.
+void display() {
+    led4.show();
+    led3.show();
+    led2.show();
+    led1.show();
+    for (int i=0; i<LED_COUNT; i++) {
+        led1[ i ]  = (i-position) % 3 == 0 ? color1 : Rgb(0,0,0);
+    }
+    for (int i=0; i<LED_COUNT; i++) {
+        led2[ i ]  = (i-position) % 2 == 0 ? color2 : Rgb(0,0,0);
+    }
+    for (int i=0; i<LED_COUNT; i++) {
+        led3[ i ]  = (i-position) % 4 == 0 ? color3 : Rgb(0,0,0);
+    }
+    for (int i=0; i<LED_COUNT; i++) {
+        led4[ i ]  = (i-position) % 3 == 0 ? color4 : Rgb(0,0,0);
+    }
 }
 
-void showRgb() {
-    leds[ 0 ] = Rgb{ 255, 0, 0 };
-    leds[ 1 ] = Rgb{ 0, 255, 0 };
-    leds[ 2 ] = Rgb{ 0, 0, 255 };
-    leds[ 3 ] = Rgb{ 0, 0, 0 };
-    leds[ 4 ] = Rgb{ 255, 255, 255 };
-    leds.show();
-}
 
 void loop() {
     // Serial.println("New loop");
+    if(millis() > lastLoop + printTime){
+        lastLoop = millis();
+        int sensor = analogRead(COUNT_PIN);
+        Serial.printf("sensor value is: %u\n", sensor);
+    }
     
-	showGradient();
+    int data = analogRead(COUNT_PIN);
+    if(position % 15 == 0) {
+        color1 = Hsv(hue, 255, 255);
+        if(millis() % 2 == 0) {
+            hue += 5;
+        }
+    }
+
+    if(position % 50 == 0) {
+        color2 = Hsv(hue + 128, 255, 255);
+        if(millis() % 10 == 0) {
+            hue += 20;
+        }
+    }
+
+    if(position % 10 == 0) {
+        color3 = Hsv(hue+64, 255, 255);
+    }
+
+    if(position % 5 == 0) {
+        color4 = Hsv(hue, 255, 255);
+        hue++;
+    }
+
+
+    if (data > HIGH_THRESHOLD && !isHigh) {
+        position++;
+        isHigh = true;
+        display();
+        // Serial.println(position);
+    }
+    if (data < LOW_THRESHOLD && isHigh) {
+        position++;
+        isHigh = false;
+        display();
+        // Serial.println(position);
+    }
 }
