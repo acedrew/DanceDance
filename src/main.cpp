@@ -22,12 +22,14 @@ const int CHANNEL = 0;
 
 int position = 0;
 bool isHigh = false;
-int lastLoop = 0;
+int printLoop = 0;
 int printTime = 250;
 uint8_t hue = 0;
-int positions[SPEED_STEPS];
-int speedIndex = 0;
+
+int speedPosition = 0;
 int speed = 0;
+int speedLoop = 0;
+int speedTime = 100;
 
 
 Rgb color1 = {255,0,0};
@@ -47,7 +49,6 @@ SmartLed led4( LED_WS2812, LED_COUNT, LED4_DATA, LED4_CHANNEL, DoubleBuffer );
 
 
 void setup() {
-    memset(positions, 0, SPEED_STEPS);
     pinMode(COUNT_PIN, INPUT);
     Serial.begin(115200);  
     display();
@@ -77,39 +78,40 @@ void updateLeds() {
 
 void updatePosition() {
     position++;
-    positions[speedIndex] = millis() - positions[speedIndex -1];
-    speedIndex++;
-    if(speedIndex >= SPEED_STEPS) {
-        speedIndex = 0;
-    }
-    int speedSum = 0;
-    for(int i; i < SPEED_STEPS; i++){
-        speedSum += positions[i];
-    }
-    speed = (int)(128 * (1.0 / ((float)(speedSum) / SPEED_STEPS)));
-
 }
 
 
 void loop() {
+    int loopMillis = millis();
     // Serial.println("New loop");
-    if(millis() > lastLoop + printTime){
-        lastLoop = millis();
+    if(loopMillis > printLoop + printTime){
+        printLoop = loopMillis;
         int sensor = analogRead(COUNT_PIN);
         Serial.printf("sensor value is: %u\n", sensor);
+    }
+
+    if(loopMillis > speedLoop + speedTime) {
+        speedLoop = loopMillis;
+        speed = (int)(1.0 / (float)(position - speedPosition)) * 255;
+        if(position > speedPosition) {
+            speedPosition = position;
+        } else {
+            speedPosition = (speedPosition > 0) ? speedPosition - 1 : 0;
+        }
+        speedPosition = position;
     }
     
     int data = analogRead(COUNT_PIN);
     if(position % 15 == 0) {
         color1 = Hsv(hue, 255, speed);
-        if(millis() % 2 == 0) {
+        if(loopMillis % 2 == 0) {
             hue += 5;
         }
     }
 
     if(position % 50 == 0) {
         color2 = Hsv(hue + 128, 255, speed);
-        if(millis() % 10 == 0) {
+        if(loopMillis % 10 == 0) {
             hue += 20;
         }
     }
