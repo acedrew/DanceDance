@@ -97,6 +97,10 @@ void checkAcc() {
         // Serial.printf("accx = %u accy = %u accz = %u\n", x, y, z);
         if(abs(x) >= 30 || abs(y) >= 30 || abs(z) >= 30) {
             speed = 255;
+            hue1 += 128;
+            hue2 += 128;
+            hue3 += 128;
+            hue4 += 128;
         }
     }
 }
@@ -126,9 +130,9 @@ void loop() {
         speed = speed < 255 - positionDelta ? speed += positionDelta : 255;
 
         // speedSum = speedSum - 10 > 0 ? speedSum - 10 : 0;
-        int speedDiv = (int)((float)(speed) / 10.0);
+        int speedDiv = (int)((float)(speed) / 2.0);
         int speedInc = speedDiv > 0 ? speedDiv  : 1;
-        speed = speed - speedInc > 0 ? speed - speedInc : 0;
+        speed = speed - speedInc > 3 ? speed - speedInc : 4;
         speedPosition = position;
         updateLeds();
         display();
