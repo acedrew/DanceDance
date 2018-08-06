@@ -1,5 +1,8 @@
 #include <Arduino.h>
 #include <SmartLeds.h>
+#include <Wire.h>
+#include "MMA7660.h"
+MMA7660 accelerometer;
 
 #define HIGH_THRESHOLD 2800
 #define LOW_THRESHOLD 2000
@@ -42,6 +45,11 @@ Rgb color2 = {0,0,0};
 Rgb color3 = {0,0,0};
 Rgb color4 = {0,0,0};
 
+/* accelerometer memory */
+int8_t x = 0;
+int8_t y = 0;
+int8_t z = 0;
+
 void display();
 
 // SmartLed -> RMT driver (WS2812/WS2812B/SK6812/WS2813)
@@ -55,6 +63,9 @@ SmartLed led4( LED_WS2812, LED_COUNT, LED4_DATA, LED4_CHANNEL, DoubleBuffer );
 
 void setup() {
     pinMode(COUNT_PIN, INPUT);
+    delay(10);
+    accelerometer.init();
+    delay(10);
     Serial.begin(115200);  
     display();
 }
@@ -80,6 +91,15 @@ void updateLeds() {
         led4[ i ]  = (i-position) % 3 == 0 ? Rgb(Hsv(hue4, 255, speed)) : Rgb(0,0,0);
     }
 }
+void checkAcc() {
+    if (millis() % 4 == 0) {
+        accelerometer.getXYZ(&x, &y, &z);
+        // Serial.printf("accx = %u accy = %u accz = %u\n", x, y, z);
+        if(abs(x) >= 30 || abs(y) >= 30 || abs(z) >= 30) {
+            speed = 255;
+        }
+    }
+}
 
 void updatePosition() {
     position++;
@@ -88,11 +108,13 @@ void updatePosition() {
 
 void loop() {
     int loopMillis = millis();
+    checkAcc();
     // Serial.println("New loop");
     if(loopMillis > printLoop + printTime){
         printLoop = loopMillis;
         int sensor = analogRead(COUNT_PIN);
-        Serial.printf("sensor value is: %u speed is %u\n", sensor, speed);
+        Serial.printf("accx = %i accy = %i accz = %i; Raw Crank = %u, speed = %u\n", x, y, z, sensor, speed);
+        // Serial.printf("sensor value is: %u speed is %u\n", sensor, speed);
     }
 
     if(loopMillis > speedLoop + speedTime) {
@@ -100,9 +122,13 @@ void loop() {
         int positionDelta = (position - speedPosition) * 13;
         speedSum += positionDelta;
 
-        speed = speedSum < 255 ? speedSum : 255;
+        // speed = speedSum < 255 ? speedSum : 255;
+        speed = speed < 255 - positionDelta ? speed += positionDelta : 255;
 
-        speedSum = speedSum - 10 > 0 ? speedSum - 10 : 0;
+        // speedSum = speedSum - 10 > 0 ? speedSum - 10 : 0;
+        int speedDiv = (int)((float)(speed) / 10.0);
+        int speedInc = speedDiv > 0 ? speedDiv  : 1;
+        speed = speed - speedInc > 0 ? speed - speedInc : 0;
         speedPosition = position;
         updateLeds();
         display();
