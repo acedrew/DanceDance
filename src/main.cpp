@@ -25,9 +25,14 @@ bool isHigh = false;
 int printLoop = 0;
 int printTime = 250;
 uint8_t hue = 0;
+uint8_t hue1 = 0;
+uint8_t hue2 = 0;
+uint8_t hue3 = 0;
+uint8_t hue4 = 0;
 
 int speedPosition = 0;
-int speed = 0;
+int speedSum = 0;
+uint8_t speed = 0;
 int speedLoop = 0;
 int speedTime = 100;
 
@@ -63,16 +68,16 @@ void display() {
 
 void updateLeds() {
     for (int i=0; i<LED_COUNT; i++) {
-        led1[ i ]  = (i-position) % 3 == 0 ? color1 : Rgb(0,0,0);
+        led1[ i ]  = (i-position) % 3 == 0 ? Rgb(Hsv(hue1, 255, speed)) : Rgb(0,0,0);
     }
     for (int i=0; i<LED_COUNT; i++) {
-        led2[ i ]  = (i-position) % 2 == 0 ? color2 : Rgb(0,0,0);
+        led2[ i ]  = (i-position) % 3 == 0 ? Rgb(Hsv(hue2, 255, speed)) : Rgb(0,0,0);
     }
     for (int i=0; i<LED_COUNT; i++) {
-        led3[ i ]  = (i-position) % 4 == 0 ? color3 : Rgb(0,0,0);
+        led3[ i ]  = (i-position) % 3 == 0 ? Rgb(Hsv(hue3, 255, speed)) : Rgb(0,0,0);
     }
     for (int i=0; i<LED_COUNT; i++) {
-        led4[ i ]  = (i-position) % 3 == 0 ? color4 : Rgb(0,0,0);
+        led4[ i ]  = (i-position) % 3 == 0 ? Rgb(Hsv(hue4, 255, speed)) : Rgb(0,0,0);
     }
 }
 
@@ -87,56 +92,64 @@ void loop() {
     if(loopMillis > printLoop + printTime){
         printLoop = loopMillis;
         int sensor = analogRead(COUNT_PIN);
-        Serial.printf("sensor value is: %u\n", sensor);
+        Serial.printf("sensor value is: %u speed is %u\n", sensor, speed);
     }
 
     if(loopMillis > speedLoop + speedTime) {
         speedLoop = loopMillis;
-        speed = (int)(1.0 / (float)(position - speedPosition)) * 255;
-        if(position > speedPosition) {
-            speedPosition = position;
-        } else {
-            speedPosition = (speedPosition > 0) ? speedPosition - 1 : 0;
-        }
+        int positionDelta = (position - speedPosition) * 13;
+        speedSum += positionDelta;
+
+        speed = speedSum < 255 ? speedSum : 255;
+
+        speedSum = speedSum - 10 > 0 ? speedSum - 10 : 0;
         speedPosition = position;
+        updateLeds();
+        display();
     }
     
     int data = analogRead(COUNT_PIN);
     if(position % 15 == 0) {
-        color1 = Hsv(hue, 255, speed);
+        // color1 = Hsv(hue, 255, speed);
+        hue1 = hue;
         if(loopMillis % 2 == 0) {
             hue += 5;
         }
     }
 
     if(position % 50 == 0) {
-        color2 = Hsv(hue + 128, 255, speed);
+        hue2 = hue + 128;
+        // color2 = Hsv(hue + 128, 255, speed);
         if(loopMillis % 10 == 0) {
             hue += 20;
         }
     }
 
     if(position % 10 == 0) {
-        color3 = Hsv(hue+64, 255, speed);
+        hue3 = hue + 64;
+        // color3 = Hsv(hue+64, 255, speed);
     }
 
     if(position % 5 == 0) {
-        color4 = Hsv(hue, 255, speed);
+        hue4 = hue;
+
+        // color4 = Hsv(hue, 255, speed);
         hue++;
     }
 
 
     if (data > HIGH_THRESHOLD && !isHigh) {
+        updateLeds();
+        display();
         updatePosition();
         isHigh = true;
-        updateLeds();
         // Serial.println(position);
     }
     if (data < LOW_THRESHOLD && isHigh) {
+        updateLeds();
+        display();
         updatePosition();
         isHigh = false;
-        updateLeds();
         // Serial.println(position);
     }
-    display();
 }
