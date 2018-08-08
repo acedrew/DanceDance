@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <vector>
 #include <SmartLeds.h>
 #include <Wire.h>
 #include "MMA7660.h"
@@ -19,14 +20,18 @@ MMA7660 accelerometer;
 
 #define SPEED_STEPS 10
 
+#define STRIP_COUNT 8
+
 
 const int LED_COUNT = 100;
 const int CHANNEL = 0;
+const int pins[8] = {13, 12, 14, 27, 17, 18, 28, 29};
 
 int position = 0;
 bool isHigh = false;
 int printLoop = 0;
 int printTime = 250;
+uint8_t hues[8] = {0};
 uint8_t hue = 0;
 uint8_t hue1 = 0;
 uint8_t hue2 = 0;
@@ -39,7 +44,15 @@ uint8_t speed = 0;
 int speedLoop = 0;
 int speedTime = 100;
 
-
+Rgb colors[8] = {
+    Rgb(255,0,0),
+    Rgb(255,0,0),
+    Rgb(255,0,0),
+    Rgb(255,0,0),
+    Rgb(255,0,0),
+    Rgb(255,0,0),
+    Rgb(255,0,0),
+};
 Rgb color1 = {255,0,0};
 Rgb color2 = {0,0,0};
 Rgb color3 = {0,0,0};
@@ -55,13 +68,17 @@ void display();
 // SmartLed -> RMT driver (WS2812/WS2812B/SK6812/WS2813)
 // SmartLed leds( LED_WS2812, LED_COUNT, DATA_PIN, CHANNEL, DoubleBuffer );
 // APA102 -> SPI driver
-SmartLed led1( LED_WS2812, LED_COUNT, LED1_DATA, LED1_CHANNEL, DoubleBuffer );
-SmartLed led2( LED_WS2812, LED_COUNT, LED2_DATA, LED2_CHANNEL, DoubleBuffer );
-SmartLed led3( LED_WS2812, LED_COUNT, LED3_DATA, LED3_CHANNEL, DoubleBuffer );
-SmartLed led4( LED_WS2812, LED_COUNT, LED4_DATA, LED4_CHANNEL, DoubleBuffer );
+// SmartLed led1( LED_WS2812, LED_COUNT, LED1_DATA, LED1_CHANNEL, DoubleBuffer );
+// SmartLed led2( LED_WS2812, LED_COUNT, LED2_DATA, LED2_CHANNEL, DoubleBuffer );
+// SmartLed led3( LED_WS2812, LED_COUNT, LED3_DATA, LED3_CHANNEL, DoubleBuffer );
+// SmartLed led4( LED_WS2812, LED_COUNT, LED4_DATA, LED4_CHANNEL, DoubleBuffer );
 
+    std::vector<SmartLed> strips;
 
 void setup() {
+    for(int i = 0; i<STRIP_COUNT; i++) {
+        strips.emplace_back(LED_WS2812, LED_COUNT, pins[i], i, DoubleBuffer);
+    }
     pinMode(COUNT_PIN, INPUT);
     delay(10);
     accelerometer.init();
@@ -71,25 +88,31 @@ void setup() {
 }
 
 void display() {
-    led4.show();
-    led3.show();
-    led2.show();
-    led1.show();
+    for(int i = 0; i < STRIP_COUNT; i++){
+        strips[i].show();
+    }
 }
 
 void updateLeds() {
-    for (int i=0; i<LED_COUNT; i++) {
-        led1[ i ]  = (i-position) % 3 == 0 ? Rgb(Hsv(hue1, 255, speed)) : Rgb(0,0,0);
+    for (int n = 0; n<STRIP_COUNT; n++){
+        for (int i=0; i<LED_COUNT; i++) {
+            strips[n][ i ]  = (i-position) % 3 == 0 ? Rgb(Hsv(hues[n], 255, speed)) : Rgb(0,0,0);
+        }
+
     }
-    for (int i=0; i<LED_COUNT; i++) {
-        led2[ i ]  = (i-position) % 3 == 0 ? Rgb(Hsv(hue2, 255, speed)) : Rgb(0,0,0);
-    }
-    for (int i=0; i<LED_COUNT; i++) {
-        led3[ i ]  = (i-position) % 3 == 0 ? Rgb(Hsv(hue3, 255, speed)) : Rgb(0,0,0);
-    }
-    for (int i=0; i<LED_COUNT; i++) {
-        led4[ i ]  = (i-position) % 3 == 0 ? Rgb(Hsv(hue4, 255, speed)) : Rgb(0,0,0);
-    }
+
+    // for (int i=0; i<LED_COUNT; i++) {
+    //     led1[ i ]  = (i-position) % 3 == 0 ? Rgb(Hsv(hue1, 255, speed)) : Rgb(0,0,0);
+    // }
+    // for (int i=0; i<LED_COUNT; i++) {
+    //     led2[ i ]  = (i-position) % 3 == 0 ? Rgb(Hsv(hue2, 255, speed)) : Rgb(0,0,0);
+    // }
+    // for (int i=0; i<LED_COUNT; i++) {
+    //     led3[ i ]  = (i-position) % 3 == 0 ? Rgb(Hsv(hue3, 255, speed)) : Rgb(0,0,0);
+    // }
+    // for (int i=0; i<LED_COUNT; i++) {
+    //     led4[ i ]  = (i-position) % 3 == 0 ? Rgb(Hsv(hue4, 255, speed)) : Rgb(0,0,0);
+    // }
 }
 void checkAcc() {
     if (millis() % 4 == 0) {
